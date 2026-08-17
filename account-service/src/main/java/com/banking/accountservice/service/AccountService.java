@@ -82,6 +82,46 @@ public class AccountService {
         log.info("Account Blocked: {}",accountNumber);
     }
 
+    /**
+     * Deduct balance from sender account
+     * Called by transaction service
+     * @param accountNumber
+     * @param amount
+     */
+    public void deductBalance(String accountNumber, BigDecimal amount){
+        log.info("Deducting balance {} from account {}", amount, accountNumber);
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(()-> new RuntimeException("Account not found"));
+
+        if(account.getStatus() != AccountStatus.ACTIVE){
+            throw new RuntimeException("Account is not active "+ accountNumber);
+        }
+
+        if(account.getBalance().compareTo(amount) < 0){
+            throw new RuntimeException("Insufficient funds for account "+ accountNumber);
+        }
+
+        account.setBalance(account.getBalance().subtract(amount));
+        accountRepository.save(account);
+        log.info("Balance updated. New Balance : {}", account.getBalance());
+    }
+
+    /**
+     * Credit Balance
+     * Called by transaction service via Kafka
+     * @param accountNumber
+     * @param amount
+     */
+    public void creditBalance(String accountNumber, BigDecimal amount){
+        log.info("Crediting {} to account: {}", amount, accountNumber);
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(()-> new RuntimeException("Account not found"));
+        account.setBalance(account.getBalance().add(amount));
+        accountRepository.save(account);
+
+        log.info("Balance Credited. New Balance: {}", account.getBalance());
+    }
+
     //Generate unique 12digit account Number
     private String generateAccountNumber(){
 
